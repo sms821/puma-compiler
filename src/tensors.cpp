@@ -43,9 +43,9 @@ ConstantMatrix ConstantMatrix::create(Model model, std::string name, unsigned in
     return m;
 }
 
-ConvolutionalConstantMatrix ConvolutionalConstantMatrix::create(Model model, std::string name, unsigned int kernelWidth, unsigned int kernelHeight, unsigned int nInChannels, unsigned int nOutChannels) {
+ConvolutionalConstantMatrix ConvolutionalConstantMatrix::create(Model model, std::string name, unsigned int kernelWidth, unsigned int kernelHeight, unsigned int nInChannels, unsigned int nOutChannels, unsigned int stride, unsigned int out_size_x, unsigned int out_size_y) {
     ConvolutionalConstantMatrix m;
-    m.impl_ = new ConvolutionalConstantMatrixImpl(model.unwrap(), name, kernelWidth, kernelHeight, nInChannels, nOutChannels);
+    m.impl_ = new ConvolutionalConstantMatrixImpl(model.unwrap(), name, kernelWidth, kernelHeight, nInChannels, nOutChannels, stride, out_size_x, out_size_y);
     return m;
 }
 
@@ -220,8 +220,8 @@ ConstantMatrixImpl::ConstantMatrixImpl(ModelImpl* model, std::string name, unsig
     model->addConstantMatrixImpl(this);
 }
 
-ConvolutionalConstantMatrixImpl::ConvolutionalConstantMatrixImpl(ModelImpl* model, std::string name, unsigned int kernelWidth, unsigned int kernelHeight, unsigned int nInChannels, unsigned int nOutChannels)
-    : AbstractTensor(model, name), kernelWidth_(kernelWidth), kernelHeight_(kernelHeight), nInChannels_(nInChannels), nOutChannels_(nOutChannels)
+ConvolutionalConstantMatrixImpl::ConvolutionalConstantMatrixImpl(ModelImpl* model, std::string name, unsigned int kernelWidth, unsigned int kernelHeight, unsigned int nInChannels, unsigned int nOutChannels, unsigned int stride, unsigned int out_size_x, unsigned int out_size_y)
+    : AbstractTensor(model, name), kernelWidth_(kernelWidth), kernelHeight_(kernelHeight), nInChannels_(nInChannels), nOutChannels_(nOutChannels), stride_(stride), out_size_x_(out_size_x), out_size_y_(out_size_y)
 {
     tiles_.resize(kernelHeight);
     for(unsigned int kh = 0; kh < kernelHeight; ++kh) {
