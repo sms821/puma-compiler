@@ -13,6 +13,7 @@
 
 #include "puma.h"
 #include "conv-layer.h"
+using namespace std;
 int main(int argc, char** argv) {
 
 //    Model model = Model::create("conv3-layer");
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
     unsigned int out_channels=16 ;
     unsigned int k_size_x=3 ;
     unsigned int k_size_y=3 ;
-    unsigned int padding=3 ;
+    unsigned int padding=1 ;
     unsigned int stride=1 ;
 
     if(argc == 10) {
