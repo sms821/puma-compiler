@@ -160,7 +160,7 @@ class ConvolutionalConstantMatrix {
 
     public:
 
-        static ConvolutionalConstantMatrix create(Model model, std::string name, unsigned int kernelWidth, unsigned kernelHeight, unsigned int nInChannels, unsigned int nOutChannels);
+        static ConvolutionalConstantMatrix create(Model model, std::string name, unsigned int kernelWidth, unsigned kernelHeight, unsigned int nInChannels, unsigned int nOutChannels, unsigned int stride, unsigned int out_size_x, unsigned int out_size_y);
 
         ConvolutionalConstantMatrixImpl* unwrap();
 

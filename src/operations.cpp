@@ -294,14 +294,17 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
     int kernelWidth = M->getKernelWidth();
     int kernelHeight = M->getKernelHeight();
     int nInChannelTiles = M->getNInChannelTiles();
-    int imageWidth = xs->imageWidth();
+    int stride = M->getStride();
+	int outImageWidth = M->getOutWidth();
+	int outImageHeight = M->getOutHeight(); 
+	int imageWidth = xs->imageWidth();
     int imageHeight = xs->imageHeight();
     ImagePixelStreamImpl* ys[kernelHeight*kernelWidth*nInChannelTiles];
     for(int kh = 0; kh < kernelHeight; ++kh) { // Instantiates tiles within the same accumulation
         for(int kw = 0; kw < kernelWidth; ++kw) { // Instantiates tiles within the same accumulation
             for(int w = 0; w < nInChannelTiles; ++w) { // Instantiates tiles within the same accumulation
                 int accumIdx = (kh*kernelWidth + kw)*nInChannelTiles + w;
-                ys[accumIdx] = new ImagePixelStreamImpl(model, imageWidth, imageHeight, M->getNOutChannels());
+                ys[accumIdx] = new ImagePixelStreamImpl(model, outImageWidth, outImageHeight, M->getNOutChannels()); ////Change H and W to o/p images H&W
                 for(int h = 0; h < M->getNOutChannelTiles(); ++h) { // Instantiates independent tiles
                     ConstantMatrixTile* mat = M->getTile(kh, kw, h, w);
                     ImagePixelStreamTile* imageStream = xs->getTile(w);
@@ -310,7 +313,7 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
                     // TODO: Convert the following into a single operation with codegened loops
                     for(int hi = -kernelHeight/2; hi < imageHeight + kernelHeight/2; ++hi) { // Loops over padded pixels of streamed input image
                         for(int wi = -kernelHeight/2; wi < imageWidth + kernelHeight/2; ++wi) { // Loops over padded pixels of streamed input image
-                            int ho = hi + kernelHeight/2 - kh;
+							int ho = hi + kernelHeight/2 - kh;
                             int wo = wi + kernelWidth/2 - kw;
                             bool inputInBounds = hi >= 0
                                                 && hi < imageHeight
@@ -324,7 +327,7 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
                             if(inputInBounds) {
                                 pixel = imageStream->get(hi, wi);
                             }
-                            if(outputInBounds) {
+                            if(outputInBounds && ho%stride==0 && wo%stride==0) {
                                 ProducerOperation* producer;
                                 if(inputInBounds) {
                                     producer = new MVMOperation(model, mat, pixel);
@@ -333,9 +336,9 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
                                 }
                                 // TODO: The following implements a sequential reduction; it would be more efficient to implement a tree reduction
                                 if(accumIdx == 0) {
-                                    accumStreamOut->add(ho, wo, producer);
+                                    accumStreamOut->add(ho/stride, wo/stride, producer);
                                 } else {
-                                    accumStreamOut->add(ho, wo, new ALUVectorOperation(model, ALUVectorOperation::ADD, producer, accumStreamIn->get(ho, wo)));
+                                    accumStreamOut->add(ho/stride, wo/stride, new ALUVectorOperation(model, ALUVectorOperation::ADD, producer, accumStreamIn->get(ho/stride, wo/stride)));
                                 }
                             }
                         }

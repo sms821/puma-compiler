@@ -331,17 +331,23 @@ class ConvolutionalConstantMatrixImpl : public AbstractTensor {
         unsigned int kernelHeight_;
         unsigned int nInChannels_;
         unsigned int nOutChannels_;
+	unsigned int stride_;
+	unsigned int out_size_x_;
+	unsigned int out_size_y_;
         std::vector< std::vector< std::vector< std::vector<ConstantMatrixTile*> > > > tiles_;
 
     public:
 
-        ConvolutionalConstantMatrixImpl(ModelImpl* model, std::string name, unsigned int kernelWidth, unsigned int kernelHeight, unsigned int nInChannels, unsigned int nOutChannels);
+        ConvolutionalConstantMatrixImpl(ModelImpl* model, std::string name, unsigned int kernelWidth, unsigned int kernelHeight, unsigned int nInChannels, unsigned int nOutChannels, unsigned int stride, unsigned int out_size_x, unsigned int out_size_y);
         ~ConvolutionalConstantMatrixImpl();
 
         unsigned int getKernelWidth() { return kernelWidth_; }
         unsigned int getKernelHeight() { return kernelHeight_; }
         unsigned int getNInChannels() { return nInChannels_; }
         unsigned int getNOutChannels() { return nOutChannels_; }
+        unsigned int getStride() { return stride_; }
+	unsigned int getOutWidth() {return out_size_x_;}	
+	unsigned int getOutHeight() {return out_size_y_;}
         unsigned int getNInChannelTiles() { return (nInChannels_ - 1)/MVMU_DIM + 1; }
         unsigned int getNOutChannelTiles() { return (nOutChannels_ - 1)/MVMU_DIM + 1; }
         ConstantMatrixTile* getTile(unsigned int kh, unsigned int kw, unsigned int h, unsigned int w);
