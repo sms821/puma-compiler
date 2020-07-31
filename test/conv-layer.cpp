@@ -21,8 +21,8 @@ int main(int argc, char** argv) {
     // Process parameter
     unsigned int in_size_x=9 ; 
     unsigned int in_size_y=9 ; 
-    unsigned int in_channels=16 ;
-    unsigned int out_channels=16 ;
+    unsigned int in_channels=128 ;
+    unsigned int out_channels=256 ;
     unsigned int k_size_x=3 ;
     unsigned int k_size_y=3 ;
     unsigned int padding=1 ;
@@ -35,14 +35,14 @@ int main(int argc, char** argv) {
         out_channels = atoi(argv[4]);
         k_size_x = atoi(argv[5]);
         k_size_y = atoi(argv[6]);
-		padding = atoi(argv[7]);
-		stride = atoi(argv[8]);
+		    padding = atoi(argv[7]);
+		    stride = atoi(argv[8]);
     }    
     std:: string str=std::string("conv") + argv[9] + std::string("-layer");
     Model model = Model::create(str);
    
     // Input stream
-    auto in_stream = InputImagePixelStream::create(model, "in_stream", in_size_x, in_size_y, in_channels);
+    auto in_stream = InputImagePixelStream::create(model, "in_stream", in_size_x, in_size_y, in_channels, stride);
 
     // Output stream
     unsigned int out_size_x = (in_size_x - k_size_x + 2*padding)/stride + 1;

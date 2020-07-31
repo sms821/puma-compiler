@@ -75,15 +75,17 @@ class AbstractImagePixelStream : public AbstractTensor {
         unsigned int imageWidth_;
         unsigned int imageHeight_;
         unsigned int nChannels_;
+        unsigned int stride_;
 
     public:
 
-        AbstractImagePixelStream(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-            : AbstractTensor(model, name), imageWidth_(imageWidth), imageHeight_(imageHeight), nChannels_(nChannels) {}
+        AbstractImagePixelStream(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride)
+            : AbstractTensor(model, name), imageWidth_(imageWidth), imageHeight_(imageHeight), nChannels_(nChannels), stride_(stride) {}
 
         unsigned int imageWidth() { return imageWidth_; }
         unsigned int imageHeight() { return imageHeight_; }
         unsigned int nChannels() { return nChannels_; }
+        unsigned int stride() {return stride_; }
         unsigned int nTiles() { return (nChannels() - 1)/MVMU_DIM + 1; }
 
         void checkCompatibility(AbstractImagePixelStream* vs);
@@ -132,7 +134,7 @@ class InputImagePixelStreamTile : public AbstractImagePixelStream {
 
     public:
 
-        InputImagePixelStreamTile(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels);
+        InputImagePixelStreamTile(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride);
         ~InputImagePixelStreamTile();
 
         InputVectorTile* get(unsigned int h, unsigned int w);
@@ -150,7 +152,7 @@ class InputImagePixelStreamImpl : public AbstractImagePixelStream {
 
     public:
 
-        InputImagePixelStreamImpl(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels);
+        InputImagePixelStreamImpl(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride);
         ~InputImagePixelStreamImpl();
 
         unsigned int nTiles() { return (nChannels() - 1)/MVMU_DIM + 1; }
@@ -188,7 +190,7 @@ class ImagePixelStreamTile : public AbstractImagePixelStream {
 
     public:
 
-        ImagePixelStreamTile(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels);
+        ImagePixelStreamTile(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride);
 
         void add(unsigned int h, unsigned int w, ProducerOperation* vec);
         ProducerOperation* get(unsigned int h, unsigned int w);
@@ -205,7 +207,7 @@ class ImagePixelStreamImpl : public AbstractImagePixelStream {
 
     public:
 
-        ImagePixelStreamImpl(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels);
+        ImagePixelStreamImpl(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride);
         ~ImagePixelStreamImpl();
 
         unsigned int nTiles() { return (nChannels() - 1)/MVMU_DIM + 1; }
@@ -331,9 +333,9 @@ class ConvolutionalConstantMatrixImpl : public AbstractTensor {
         unsigned int kernelHeight_;
         unsigned int nInChannels_;
         unsigned int nOutChannels_;
-	unsigned int stride_;
-	unsigned int out_size_x_;
-	unsigned int out_size_y_;
+	      unsigned int stride_;
+	      unsigned int out_size_x_;
+	      unsigned int out_size_y_;
         std::vector< std::vector< std::vector< std::vector<ConstantMatrixTile*> > > > tiles_;
 
     public:
@@ -346,8 +348,8 @@ class ConvolutionalConstantMatrixImpl : public AbstractTensor {
         unsigned int getNInChannels() { return nInChannels_; }
         unsigned int getNOutChannels() { return nOutChannels_; }
         unsigned int getStride() { return stride_; }
-	unsigned int getOutWidth() {return out_size_x_;}	
-	unsigned int getOutHeight() {return out_size_y_;}
+  	    unsigned int getOutWidth() {return out_size_x_;}	
+	      unsigned int getOutHeight() {return out_size_y_;}
         unsigned int getNInChannelTiles() { return (nInChannels_ - 1)/MVMU_DIM + 1; }
         unsigned int getNOutChannelTiles() { return (nOutChannels_ - 1)/MVMU_DIM + 1; }
         ConstantMatrixTile* getTile(unsigned int kh, unsigned int kw, unsigned int h, unsigned int w);

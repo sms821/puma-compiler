@@ -64,7 +64,7 @@ class InputImagePixelStream {
 
     public:
 
-        static InputImagePixelStream create(Model model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int length);
+        static InputImagePixelStream create(Model model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int length, unsigned int stride);
 
         InputImagePixelStreamImpl* unwrap();
 

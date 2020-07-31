@@ -8,10 +8,12 @@
 
 #include <assert.h>
 #include <sstream>
+#include <cmath>
 
 #include "model.h"
 #include "operations.h"
 #include "tensors.h"
+using namespace std;
 
 InputVector InputVector::create(Model model, std::string name, unsigned int length) {
     InputVector vec;
@@ -19,9 +21,9 @@ InputVector InputVector::create(Model model, std::string name, unsigned int leng
     return vec;
 }
 
-InputImagePixelStream InputImagePixelStream::create(Model model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels) {
+InputImagePixelStream InputImagePixelStream::create(Model model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride) {
     InputImagePixelStream stream;
-    stream.impl_ = new InputImagePixelStreamImpl(model.unwrap(), name, imageWidth, imageHeight, nChannels);
+    stream.impl_ = new InputImagePixelStreamImpl(model.unwrap(), name, imageWidth, imageHeight, nChannels, stride);
     return stream;
 }
 
@@ -133,20 +135,20 @@ InputVectorImpl::InputVectorImpl(ModelImpl* model, std::string name, unsigned in
     model->addInputVectorImpl(this);
 }
 
-InputImagePixelStreamTile::InputImagePixelStreamTile(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels)
+InputImagePixelStreamTile::InputImagePixelStreamTile(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride)
+    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels, stride)
 {
-    stream_.resize(imageHeight);
-    for(unsigned int h = 0; h < imageHeight; ++h) {
-        stream_[h].resize(imageWidth);
-        for(unsigned int w = 0; w < imageWidth; ++w) {
+    stream_.resize(ceil((double)imageHeight/stride));
+    for(unsigned int h = 0; h < ceil((double)imageHeight/stride); ++h) {
+        stream_[h].resize(ceil((double)imageWidth/stride));
+        for(unsigned int w = 0; w < ceil((double)imageWidth/stride); ++w) {
             stream_[h][w] = new InputVectorTile(model, name + "[" + std::to_string(h) + "][" + std::to_string(w) + "]", nChannels);
         }
     }
 }
 
-InputImagePixelStreamImpl::InputImagePixelStreamImpl(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels)
+InputImagePixelStreamImpl::InputImagePixelStreamImpl(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride)
+    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels, stride)
 {
     tiles_.resize(nTiles());
     for(unsigned int i = 0; i < nTiles(); ++i) {
@@ -154,7 +156,7 @@ InputImagePixelStreamImpl::InputImagePixelStreamImpl(ModelImpl* model, std::stri
         if(i == nTiles() - 1 && nChannels%MVMU_DIM > 0) {
             tileSize = nChannels%MVMU_DIM;
         }
-        tiles_[i] = new InputImagePixelStreamTile(model, name + "[" + std::to_string(i) + "]", imageWidth, imageHeight, tileSize);
+        tiles_[i] = new InputImagePixelStreamTile(model, name + "[" + std::to_string(i) + "]", imageWidth, imageHeight, tileSize, stride);
     }
     model->addInputImagePixelStreamImpl(this);
 }
@@ -174,7 +176,7 @@ OutputVectorImpl::OutputVectorImpl(ModelImpl* model, std::string name, unsigned 
 }
 
 OutputImagePixelStreamTile::OutputImagePixelStreamTile(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels)
+    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels, 1)
 {
     stream_.resize(imageHeight);
     for(unsigned int h = 0; h < imageHeight; ++h) {
@@ -186,7 +188,7 @@ OutputImagePixelStreamTile::OutputImagePixelStreamTile(ModelImpl* model, std::st
 }
 
 OutputImagePixelStreamImpl::OutputImagePixelStreamImpl(ModelImpl* model, std::string name, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels)
+    : AbstractImagePixelStream(model, name, imageWidth, imageHeight, nChannels, 1)
 {
     tiles_.resize(nTiles());
     for(unsigned int i = 0; i < nTiles(); ++i) {
@@ -274,17 +276,17 @@ VectorImpl::VectorImpl(ModelImpl* model, unsigned int length)
     model->addVectorImpl(this);
 }
 
-ImagePixelStreamTile::ImagePixelStreamTile(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-    : AbstractImagePixelStream(model, "", imageWidth, imageHeight, nChannels)
+ImagePixelStreamTile::ImagePixelStreamTile(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride)
+    : AbstractImagePixelStream(model, "", imageWidth, imageHeight, nChannels, stride)
 {
-    stream_.resize(imageHeight);
-    for(unsigned int h = 0; h < imageHeight; ++h) {
-        stream_[h].resize(imageWidth);
+    stream_.resize(ceil((double)imageHeight/stride));
+    for(unsigned int h = 0; h < ceil((double)imageHeight/stride); ++h) {
+        stream_[h].resize(ceil((double)imageWidth/stride));
     }
 }
 
-ImagePixelStreamImpl::ImagePixelStreamImpl(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels)
-    : AbstractImagePixelStream(model, "", imageWidth, imageHeight, nChannels)
+ImagePixelStreamImpl::ImagePixelStreamImpl(ModelImpl* model, unsigned int imageWidth, unsigned int imageHeight, unsigned int nChannels, unsigned int stride)
+    : AbstractImagePixelStream(model, "", imageWidth, imageHeight, nChannels, stride)
 {
     tiles_.resize(nTiles());
     for(unsigned int i = 0; i < nTiles(); ++i) {
@@ -292,7 +294,7 @@ ImagePixelStreamImpl::ImagePixelStreamImpl(ModelImpl* model, unsigned int imageW
         if(i == nTiles() - 1 && nChannels%MVMU_DIM > 0) {
             tileSize = nChannels%MVMU_DIM;
         }
-        tiles_[i] = new ImagePixelStreamTile(model, imageWidth, imageHeight, tileSize);
+        tiles_[i] = new ImagePixelStreamTile(model, imageWidth, imageHeight, tileSize, stride);
     }
     model->addImagePixelStreamImpl(this);
 }
