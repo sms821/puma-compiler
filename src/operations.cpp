@@ -8,10 +8,12 @@
 
 #include <assert.h>
 #include <sstream>
+#include <cmath>
 
 #include "model.h"
 #include "operations.h"
 #include "tensors.h"
+using namespace std;
 
 void OutputVector::operator=(Vector xparam) {
     VectorImpl* x = xparam.unwrap();
@@ -55,14 +57,14 @@ Vector::Vector(InputVector xparam) {
 
 ImagePixelStream::ImagePixelStream(InputImagePixelStream xsparam) {
     InputImagePixelStreamImpl* xs = xsparam.unwrap();
-    ImagePixelStreamImpl* ys = new ImagePixelStreamImpl(xs->getModel(), xs->imageWidth(), xs->imageHeight(), xs->nChannels());
+    ImagePixelStreamImpl* ys = new ImagePixelStreamImpl(xs->getModel(), xs->imageWidth(), xs->imageHeight(), xs->nChannels(), xs->stride());
     ys->checkCompatibility(xs);
     for(unsigned int t = 0; t < xs->nTiles(); ++t) {
         InputImagePixelStreamTile* xsTile = xs->getTile(t);
         ImagePixelStreamTile* ysTile = ys->getTile(t);
         // TODO: Convert the following into a single operation with codegened loops
-        for(unsigned int h = 0; h < xs->imageHeight(); ++ h) {
-            for(unsigned int w = 0; w < xs->imageWidth(); ++ w) {
+        for(unsigned int h = 0; h < ceil((double)xs->imageHeight()/xs->stride()); ++ h) {
+            for(unsigned int w = 0; w < ceil((double)xs->imageWidth()/xs->stride()); ++ w) {
                 InputVectorTile* x = xsTile->get(h, w);
                 ProducerOperation* y = new PseudoInputOperation(x->getModel(), x);
                 ysTile->add(h, w, y);
@@ -213,14 +215,14 @@ Vector operator*(float imm, Vector x) {
 
 ImagePixelStream sig(ImagePixelStream xsparam) {
     ImagePixelStreamImpl* xs = xsparam.unwrap();
-    ImagePixelStreamImpl* ys = new ImagePixelStreamImpl(xs->getModel(), xs->imageWidth(), xs->imageHeight(), xs->nChannels());
+    ImagePixelStreamImpl* ys = new ImagePixelStreamImpl(xs->getModel(), xs->imageWidth(), xs->imageHeight(), xs->nChannels(), xs->stride());
     ys->checkCompatibility(xs);
     for(unsigned int t = 0; t < xs->nTiles(); ++t) {
         ImagePixelStreamTile* xsTile = xs->getTile(t);
         ImagePixelStreamTile* ysTile = ys->getTile(t);
         // TODO: Convert the following into a single operation with codegened loops
-        for(unsigned int h = 0; h < xs->imageHeight(); ++h) {
-            for(unsigned int w = 0; w < xs->imageWidth(); ++w) {
+        for(unsigned int h = 0; h < ceil((double)xs->imageHeight()/xs->stride()); ++h) {
+            for(unsigned int w = 0; w < ceil((double)xs->imageWidth()/xs->stride()); ++w) {
                 ProducerOperation* x = xsTile->get(h, w);
                 ProducerOperation* y = new ALUVectorOperation(x->getModel(), ALUVectorOperation::SIG, x);
                 ysTile->add(h, w, y);
@@ -234,7 +236,7 @@ ImagePixelStream maxpool(ImagePixelStream xsparam, unsigned int hspan, unsigned 
     ImagePixelStreamImpl* xs = xsparam.unwrap();
     unsigned int ysWidth = (xs->imageWidth() - 1)/wspan + 1;
     unsigned int ysHeight = (xs->imageHeight() - 1)/hspan + 1;
-    ImagePixelStreamImpl* ys = new ImagePixelStreamImpl(xs->getModel(), ysWidth, ysHeight, xs->nChannels());
+    ImagePixelStreamImpl* ys = new ImagePixelStreamImpl(xs->getModel(), ysWidth, ysHeight, xs->nChannels(), xs->stride());
     for(unsigned int t = 0; t < xs->nTiles(); ++t) {
         ImagePixelStreamTile* xsTile = xs->getTile(t);
         ImagePixelStreamTile* ysTile = ys->getTile(t);
@@ -295,16 +297,16 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
     int kernelHeight = M->getKernelHeight();
     int nInChannelTiles = M->getNInChannelTiles();
     int stride = M->getStride();
-	int outImageWidth = M->getOutWidth();
-	int outImageHeight = M->getOutHeight(); 
-	int imageWidth = xs->imageWidth();
+	  int outImageWidth = M->getOutWidth();
+	  int outImageHeight = M->getOutHeight(); 
+	  int imageWidth = xs->imageWidth();
     int imageHeight = xs->imageHeight();
     ImagePixelStreamImpl* ys[kernelHeight*kernelWidth*nInChannelTiles];
     for(int kh = 0; kh < kernelHeight; ++kh) { // Instantiates tiles within the same accumulation
         for(int kw = 0; kw < kernelWidth; ++kw) { // Instantiates tiles within the same accumulation
             for(int w = 0; w < nInChannelTiles; ++w) { // Instantiates tiles within the same accumulation
                 int accumIdx = (kh*kernelWidth + kw)*nInChannelTiles + w;
-                ys[accumIdx] = new ImagePixelStreamImpl(model, outImageWidth, outImageHeight, M->getNOutChannels()); ////Change H and W to o/p images H&W
+                ys[accumIdx] = new ImagePixelStreamImpl(model, outImageWidth, outImageHeight, M->getNOutChannels(), 1); ////Change H and W to o/p images H&W
                 for(int h = 0; h < M->getNOutChannelTiles(); ++h) { // Instantiates independent tiles
                     ConstantMatrixTile* mat = M->getTile(kh, kw, h, w);
                     ImagePixelStreamTile* imageStream = xs->getTile(w);
@@ -313,7 +315,7 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
                     // TODO: Convert the following into a single operation with codegened loops
                     for(int hi = -kernelHeight/2; hi < imageHeight + kernelHeight/2; ++hi) { // Loops over padded pixels of streamed input image
                         for(int wi = -kernelHeight/2; wi < imageWidth + kernelHeight/2; ++wi) { // Loops over padded pixels of streamed input image
-							int ho = hi + kernelHeight/2 - kh;
+							              int ho = hi + kernelHeight/2 - kh;
                             int wo = wi + kernelWidth/2 - kw;
                             bool inputInBounds = hi >= 0
                                                 && hi < imageHeight
@@ -325,7 +327,7 @@ ImagePixelStream operator*(ConvolutionalConstantMatrix Mparam, ImagePixelStream 
                                                 && wo < imageWidth;
                             ProducerOperation* pixel = NULL;
                             if(inputInBounds) {
-                                pixel = imageStream->get(hi, wi);
+                                pixel = imageStream->get(hi/stride, wi/stride);
                             }
                             if(outputInBounds && ho%stride==0 && wo%stride==0) {
                                 ProducerOperation* producer;
@@ -446,6 +448,9 @@ OutputOperation::OutputOperation(OutputVectorTile* dst) : dst_(dst) {
 
 MVMOperation::MVMOperation(ModelImpl* model, ConstantMatrixTile* mat, ProducerOperation* op) : Operation(model, mat->height()), ConsumerOperation(op), mat_(mat), coalescedSet_(NULL) {
     assert(mat != NULL && op != NULL && mat->width() == op->length());
+//    assert(mat != NULL);
+//    assert(op !=NULL);
+//    assert(mat->width()== op->length());
     assert(mat->width() <= MVMU_DIM && mat->height() <= MVMU_DIM && "MVM operations larger than one MVMU are not supported");
     mat->addUser(this);
 }
