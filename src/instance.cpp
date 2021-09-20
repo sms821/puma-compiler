@@ -15,6 +15,8 @@
 #include "placer.h"
 #include "tensors.h"
 
+using namespace std;
+
 ModelInstance ModelInstance::create(Model model) {
     ModelInstance instance;
     instance.impl_ = model.unwrap()->createInstance();
@@ -38,6 +40,7 @@ ModelInstanceImpl::ModelInstanceImpl(ModelImpl* model, Placer* placer)
 { }
 
 void ModelInstanceImpl::bind(std::string tensorName, float* data) {
+    cout << "Binding weights to layer " << tensorName << endl; //sms821
     tensorData_[tensorName] = data;
 }
 
@@ -50,6 +53,7 @@ void ModelInstanceImpl::generateData() {
     for(auto m = model_->const_mat_begin(); m != model_->const_mat_end(); ++m) {
         ConstantMatrixImpl* mat = *m;
         std::string matName = mat->name();
+        cout << "Getting weights for layer key " << matName << endl; // sms821
         assert(tensorData_.count(matName) && "No data provided for matrix");
         float* matData = tensorData_[matName];
         for(unsigned int h = 0; h < mat->nHeightTiles(); ++h) {
@@ -78,6 +82,7 @@ void ModelInstanceImpl::generateData() {
     for(auto m = model_->conv_mat_begin(); m != model_->conv_mat_end(); ++m) {
         ConvolutionalConstantMatrixImpl* mat = *m;
         std::string matName = mat->name();
+        cout << "Getting weights for layer key " << matName << endl; // sms821
         assert(tensorData_.count(matName) && "No data provided for matrix");
         float* matData = tensorData_[matName];
         for(unsigned int kh = 0; kh < mat->getKernelHeight(); ++kh) {

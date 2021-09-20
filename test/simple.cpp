@@ -6,10 +6,14 @@
  *
  */
 
+#include <iostream>
+#include <fstream>
 #include <assert.h>
 #include <string>
 #include <vector>
 #include "puma.h"
+
+using namespace std;
 
 int main(int argc, char** argv) {
 
@@ -25,8 +29,26 @@ int main(int argc, char** argv) {
      // Compile
     model.compile();
 
+    // Bind data
+    ModelInstance modelInstance = ModelInstance::create(model);
+    float* layer1Weights = new float[size*size];
+
+    //Reading weights from text files
+    int i=0;
+    std::ifstream wf1;
+    wf1.open("simple/wl1.txt");
+    while(wf1 >> layer1Weights[i])
+    { i++; }
+    wf1.close();
+    cout << "Read " << i << " weights." << endl;
+    //fully_connected_layer_bind(modelInstance, "layer" + std::to_string(1), layer1Weights);
+    modelInstance.bind( "constant_", layer1Weights);
+    
+    modelInstance.generateData();
+
     // Destroy model
     model.destroy();
+    delete[] layer1Weights;
 
     return 0;
 
